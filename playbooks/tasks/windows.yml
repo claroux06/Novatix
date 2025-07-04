@@ -1,0 +1,35 @@
+---
+- name: Créer dossier pour installer l'agent
+  win_file:
+    path: C:/wazuh-agent
+    state: directory
+
+- name: Télécharger le MSI Wazuh agent 4.12.0
+  win_get_url:
+    url: https://packages.wazuh.com/4.x/windows/wazuh-agent-4.12.0-1.msi
+    dest: C:/wazuh-agent/wazuh-agent.msi
+    force: yes
+
+- name: Attendre la présence du MSI
+  win_wait_for:
+    path: C:/wazuh-agent/wazuh-agent.msi
+    timeout: 30
+
+- name: Vérifier que le MSI a bien été téléchargé
+  win_stat:
+    path: C:/wazuh-agent/wazuh-agent.msi
+  register: msi_file
+
+- name: Afficher le résultat du check
+  debug:
+    var: msi_file
+
+- name: Installer l'agent Wazuh via ligne de commande (contournement)
+  win_shell: |
+    msiexec.exe /i "C:\wazuh-agent\wazuh-agent.msi" /q WAZUH_MANAGER="{{ wazuh_manager_ip }}" WAZUH_AGENT_GROUP="{{ wazuh_agent_group }}" WAZUH_AGENT_NAME="{{ ansible_hostname }}"
+
+- name: Démarrer le service Wazuh
+  win_service:
+    name: WazuhSvc
+    state: started
+    start_mode: auto

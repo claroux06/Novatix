@@ -1,0 +1,48 @@
+---
+- name: Join AlmaLinux to Active Directory Domain
+  hosts: TEST
+  become: yes
+  vars:
+    domain_name: "AGROTECH.local"
+    domain_admin_user: "Administrateur"
+    domain_admin_password: "GuardAD69"  # Remplace avec ton mot de passe
+    allowed_ad_users: []     # Par exemple ["user1@domaine.local", "user2@domaine.local"]
+    allowed_ad_groups: []    # Par exemple ["Domain Users", "GroupeLinux"]
+
+  tasks:
+    - name: Install required packages
+      dnf:
+        name:
+          - realmd
+          - sssd
+          - oddjob
+          - oddjob-mkhomedir
+          - adcli
+          - samba-common-tools
+          - krb5-workstation
+        state: present
+        update_cache: yes
+
+    - name: Discover Active Directory domain
+      command: realm discover {{ domain_name }}
+      register: realm_discover
+      changed_when: false
+
+    - name: Join the machine to the Active Directory domain
+      command: >
+        realm join --user={{ domain_admin_user }} --password={{ domain_admin_password }} {{ domain_name }}
+      args:
+        creates: /etc/sssd/sssd.conf
+
+    - name: Enable automatic home directory creation
+      command: authconfig --enablemkhomedir --update
+
+    - name: Permit specific AD users to login (if any)
+      when: allowed_ad_users | length > 0
+      loop: "{{ allowed_ad_users }}"
+      command: realm permit "{{ item }}"
+
+    - name: Permit specific AD groups to login (if any)
+      when: allowed_ad_groups | length > 0
+      loop: "{{ allowed_ad_groups }}"
+      command: realm permit -g "{{ item }}"

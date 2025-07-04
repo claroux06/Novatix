@@ -1,0 +1,37 @@
+- name: Désinstaller complètement le Wazuh Agent et ses fichiers
+  hosts: all
+  become: yes
+  tasks:
+
+    - name: Arrêter le service wazuh-agent s’il existe
+      service:
+        name: wazuh-agent
+        state: stopped
+      ignore_errors: yes
+
+    - name: Désactiver le service wazuh-agent
+      systemd:
+        name: wazuh-agent
+        enabled: no
+      ignore_errors: yes
+
+    - name: Supprimer le paquet wazuh-agent
+      apt:
+        name: wazuh-agent
+        state: absent
+        purge: yes
+
+    - name: Supprimer les fichiers de configuration restants
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/ossec-init.conf
+        - /var/ossec
+        - /etc/apt/sources.list.d/wazuh.list
+        - /usr/share/keyrings/wazuh.gpg
+      ignore_errors: yes
+
+    - name: Nettoyer le cache APT
+      apt:
+        update_cache: yes

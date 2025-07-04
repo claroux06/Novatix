@@ -1,0 +1,53 @@
+---
+- name: Installer les dépendances nécessaires
+  apt:
+    name:
+      - curl
+      - gnupg
+      - apt-transport-https
+    state: present
+    update_cache: yes
+
+- name: Télécharger la clé GPG Wazuh et l’importer dans un keyring dédié
+  ansible.builtin.shell: |
+    curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import
+    chmod 644 /usr/share/keyrings/wazuh.gpg
+  args:
+    creates: /usr/share/keyrings/wazuh.gpg
+
+- name: Ajouter le dépôt Wazuh avec la clé signée
+  ansible.builtin.lineinfile:
+    path: /etc/apt/sources.list.d/wazuh.list
+    line: "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main"
+    create: yes
+
+- name: Mettre à jour le cache apt
+  apt:
+    update_cache: yes
+
+- name: Installer l'agent Wazuh
+  apt:
+    name: wazuh-agent
+    state: present
+
+- name: Configurer l’agent Wazuh (ossec.conf)
+  blockinfile:
+    path: /var/ossec/etc/ossec.conf
+    marker: ""
+    block: |
+      <client>
+        <server-ip>{{ wazuh_manager_ip }}</server-ip>
+        <config-profile>{{ wazuh_agent_group }}</config-profile>
+      </client>
+
+- name: Enregistrer l’agent sur le manager
+  shell: >
+    /var/ossec/bin/agent-auth -m {{ wazuh_manager_ip }} -p {{ wazuh_manager_port }} -A {{ ansible_hostname }}
+  register: auth_output
+  changed_when: "'Key added' in auth_output.stdout"
+
+- name: Activer et démarrer l'agent Wazuh
+  systemd:
+    name: wazuh-agent
+    enabled: yes
+    state: restarted

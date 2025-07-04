@@ -1,0 +1,27 @@
+---
+- name: Déployer Active Response Wazuh
+  hosts: all
+  vars:
+    linux_scripts_dir: "/var/ossec/active-response/bin"
+    windows_scripts_dir: "C:\\Program Files (x86)\\ossec-agent\\active-response"
+
+  tasks:
+    - name: Déployer firewalldrop (Linux)
+      copy:
+        src: files/firewalldrop.sh
+        dest: "{{ linux_scripts_dir }}/firewalldrop"
+        mode: '0755'
+      when: ansible_os_family != "Windows"
+
+    - name: Déployer disable-account (Linux)
+      copy:
+        src: files/disable-account.sh
+        dest: "{{ linux_scripts_dir }}/disable-account"
+        mode: '0755'
+      when: ansible_os_family != "Windows"
+
+    - name: Déployer firewalldrop.bat (Windows)
+      win_copy:
+        src: files/firewalldrop.bat
+        dest: "{{ windows_scripts_dir }}\\firewalldrop.bat"
+      when: ansible_os_family == "Windows"

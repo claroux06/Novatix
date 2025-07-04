@@ -1,0 +1,63 @@
+---
+- name: Importer la clé GPG Wazuh
+  rpm_key:
+    state: present
+    key: https://packages.wazuh.com/key/GPG-KEY-WAZUH
+
+- name: Ajouter le dépôt Wazuh dans yum
+  copy:
+    dest: /etc/yum.repos.d/wazuh.repo
+    content: |
+      [wazuh]
+      gpgcheck=1
+      gpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH
+      enabled=1
+      name=EL-$releasever - Wazuh
+      baseurl=https://packages.wazuh.com/4.x/yum/
+      priority=1
+    mode: '0644'
+
+- name: Installer les dépendances nécessaires
+  yum:
+    name:
+      - curl
+      - gnupg2
+    state: present
+
+- name: Installer l'agent Wazuh
+  yum:
+    name: wazuh-agent
+    state: present
+
+- name: Configurer l’agent Wazuh (ossec.conf)
+  blockinfile:
+    path: /var/ossec/etc/ossec.conf
+    marker: ""
+    block: |
+      <client>
+        <server-ip>{{ wazuh_manager_ip }}</server-ip>
+        <config-profile>{{ wazuh_agent_group }}</config-profile>
+      </client>
+
+- name: Enregistrer l’agent sur le manager Wazuh
+  shell: >
+    /var/ossec/bin/agent-auth -m {{ wazuh_manager_ip }} -p {{ wazuh_manager_port }} -A {{ ansible_hostname }}
+  register: auth_output
+  changed_when: "'Key added' in auth_output.stdout"
+  retries: 3
+  delay: 5
+  until: auth_output.rc == 0 and "'Key added' in auth_output.stdout"
+
+- name: Recharger systemd
+  systemd:
+    daemon_reload: yes
+
+- name: Activer l'agent Wazuh au démarrage
+  systemd:
+    name: wazuh-agent
+    enabled: yes
+
+- name: Démarrer l'agent Wazuh
+  systemd:
+    name: wazuh-agent
+    state: started
