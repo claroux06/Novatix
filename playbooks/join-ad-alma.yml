@@ -5,9 +5,9 @@
   vars:
     domain_name: "AGROTECH.local"
     domain_admin_user: "Administrateur"
-    domain_admin_password: "GuardAD69"  # Remplace avec ton mot de passe
-    allowed_ad_users: []     # Par exemple ["user1@domaine.local", "user2@domaine.local"]
-    allowed_ad_groups: []    # Par exemple ["Domain Users", "GroupeLinux"]
+    domain_admin_password: "****"  
+    allowed_ad_users: []     
+    allowed_ad_groups: []    
 
   tasks:
     - name: Install required packages
