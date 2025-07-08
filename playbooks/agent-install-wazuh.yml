@@ -1,6 +1,6 @@
 ---
 - name: Installation et enregistrement des agents Wazuh
-  hosts: TEST
+  hosts: all
   gather_facts: yes
 
   vars:
